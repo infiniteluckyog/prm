@@ -113,8 +113,8 @@ def process():
     except Exception as e:
         return jsonify({"error": "Invalid CC format", "detail": str(e)}), 400
 
-    name = "Lucky Sex"
-    email = "justforawsyaar@gmail.com"
+    name = "Yume Yis"
+    email = "admifake2@gmail.com"
     amount = 10
 
     try:
