@@ -11,7 +11,7 @@ app = Flask(__name__)
 faker = Faker()
 
 # === Proxy Setup ===
-proxy_url = "http://user-PP_NUAE0G7MN3-country-US-plan-luminati:ncgncvqp@bd.porterproxies.com:8888"
+proxy_url = "http://PP_VE8BWN2IDB-country-US:93ut5gyg@evo-pro.porterproxies.com:61236"
 proxies = {
     "http": proxy_url,
     "https": proxy_url,
