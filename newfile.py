@@ -6,9 +6,11 @@ import time
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from faker import Faker
 import random
+from fake_useragent import UserAgent
 
 app = Flask(__name__)
 faker = Faker()
+ua = UserAgent()
 
 def random_name():
     return faker.name()
@@ -23,7 +25,7 @@ def get_token(card, month, year, cvv, zip_code, name, proxies):
         'Content-Type': 'application/json; charset=UTF-8',
         'Origin': 'https://nbda.com',
         'Referer': 'https://nbda.com/',
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': ua.random  # Random User-Agent
     }
     payload = {
         "securePaymentContainerRequest": {
@@ -75,7 +77,7 @@ def send_to_checkout(token, name, email, proxies):
         'Content-Type': m.content_type,
         'Origin': 'https://nbda.com',
         'Referer': 'https://nbda.com/',
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': ua.random,  # Random User-Agent
         'x-org': '22350'
     }
 
