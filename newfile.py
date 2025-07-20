@@ -4,8 +4,19 @@ import uuid
 import json
 import time
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+from faker import Faker
+import random
 
 app = Flask(__name__)
+faker = Faker()
+
+def random_name():
+    return faker.name()
+
+def random_gmail():
+    # Ensures unique emails and more variability
+    user = faker.user_name() + str(random.randint(1000, 99999))
+    return f"{user}@gmail.com"
 
 # === Original token generation ===
 def get_token(card, month, year, cvv, zip_code, name, proxies):
@@ -113,8 +124,8 @@ def process():
     except Exception as e:
         return jsonify({"error": "Invalid CC format", "detail": str(e)}), 400
 
-    name = "Yume Yis"
-    email = "admifake2@gmail.com"
+    name = random_name()     # New random name every request
+    email = random_gmail()   # New random gmail every request
     amount = 10
 
     try:
@@ -128,6 +139,8 @@ def process():
     return jsonify({
         "amount": amount,
         "time_taken": time_taken,
+        "name": name,
+        "email": email,
         "message": message
     })
 
